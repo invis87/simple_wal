@@ -253,8 +253,24 @@ impl LogFile {
         // Seek to the start index. This will also change the file cursor, allowing io::copy to correctly operate.
         self.seek(new_start_index)?;
 
-        let mut temp_file_path = std::env::temp_dir().to_path_buf();
-        temp_file_path.set_file_name(format!("log-{}", rand::random::<u32>()));
+        let mut orig_file_path = self.path.clone();
+        let temp_file_path = match orig_file_path.file_name() {
+            Some(temp_filename) => {
+                let new_name = format!(
+                    "{}_temp_{}",
+                    temp_filename.to_string_lossy(),
+                    rand::random::<u32>()
+                );
+                orig_file_path.set_file_name(new_name);
+                orig_file_path
+            }
+            None => {
+                let mut tempdir_file_path = std::env::temp_dir().to_path_buf();
+                tempdir_file_path.set_file_name(format!("log-{}", rand::random::<u32>()));
+                tempdir_file_path
+            }
+        };
+
         let mut new_file = AdvisoryFileLock::new(
             temp_file_path.as_path(),
             advisory_lock::FileLockMode::Exclusive,
